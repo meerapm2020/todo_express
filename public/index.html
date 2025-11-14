@@ -1,96 +1,156 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Todo App</title>
-  <style>
-    body { font-family: Arial; padding: 20px; background: #fafafa; }
-    h1 { color: #333; }
-    input, button { padding: 10px; margin: 5px; }
-    ul { list-style-type: none; padding: 0; }
-    li { background: #f0f0f0; margin: 5px 0; padding: 10px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
-    .done { text-decoration: line-through; color: gray; }
-  </style>
-</head>
-<body>
-  <h1>Todo App (Express + HTML)</h1>
-  <form id="todoForm">
-    <input type="text" id="taskInput" placeholder="Enter a new task" required />
-    <button type="submit">Add</button>
-  </form>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Todo App</title>
+    <style>
+      body {
+        font-family: Arial;
+        padding: 20px;
+        background: #fafafa;
+      }
+      h1 {
+        color: #333;
+      }
+      input,
+      button {
+        padding: 10px;
+        margin: 5px;
+      }
+      ul {
+        list-style-type: none;
+        padding: 0;
+      }
+      li {
+        background: #f0f0f0;
+        margin: 5px 0;
+        padding: 10px;
+        border-radius: 5px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .done {
+        text-decoration: line-through;
+        color: gray;
+      }
+      .task-text {
+        flex: 1;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Todo App (Express + HTML)</h1>
+    <form id="todoForm">
+      <input
+        type="text"
+        id="taskInput"
+        placeholder="Enter a new task"
+        required
+      />
+      <button type="submit">Add</button>
+    </form>
 
-  <h2>Your Todos</h2>
-  <ul id="todoList"></ul>
+    <h2>Your Todos</h2>
+    <ul id="todoList"></ul>
 
-  <script>
-    async function fetchTodos() {
-      const response = await fetch("/todos");
-      const todos = await response.json();
-      const list = document.getElementById("todoList");
-      list.innerHTML = "";
+    <script>
+      async function fetchTodos() {
+        const response = await fetch("/todos");
+        const todos = await response.json();
+        const list = document.getElementById("todoList");
+        list.innerHTML = "";
 
-      todos.forEach((todo) => {
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <span class="${todo.isDone ? 'done' : ''}">${todo.task}</span>
-          <div>
-            <button onclick="toggleDone(${todo.id}, ${!todo.isDone})">
-              ${todo.isDone ? "Undo" : "Done"}
-            </button>
-            <button onclick="editTask(${todo.id}, '${todo.task}')">Edit</button>
-            <button onclick="deleteTodo(${todo.id})">Delete</button>
-          </div>
-        `;
-        list.appendChild(li);
-      });
-    }
+        todos.forEach((todo) => {
+          const li = document.createElement("li");
 
-    // Add Todo
-    document.getElementById("todoForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const task = document.getElementById("taskInput").value;
-      if (!task.trim()) return alert("Task cannot be empty!");
-      await fetch("/add-todo", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ task }),
-      });
-      document.getElementById("taskInput").value = "";
-      fetchTodos();
-    });
+          li.innerHTML = `
+            <div style="display: flex; align-items: center; flex: 1;">
+              <input type="checkbox" ${
+                todo.isDone ? "checked" : ""
+              } onchange="toggleDone('${todo._id}', this.checked)">
+              <span class="task-text ${todo.isDone ? "done" : ""}">${
+            todo.task
+          }</span>
+            </div>
+            <div>
+              <button onclick="editTask('${todo._id}', '${todo.task.replace(
+            /'/g,
+            "\\'"
+          )}')">Edit</button>
+              <button onclick="deleteTodo('${todo._id}')">Delete</button>
+            </div>
+          `;
 
-    // Delete Todo
-    async function deleteTodo(id) {
-      await fetch(`/delete-todo/${id}`, { method: "DELETE" });
-      fetchTodos();
-    }
+          list.appendChild(li);
+        });
+      }
 
-    // Toggle Done
-    async function toggleDone(id, newStatus) {
-      await fetch(`/update-todo/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isDone: newStatus }),
-      });
-      fetchTodos();
-    }
+      // Add Todo
+      document
+        .getElementById("todoForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const task = document.getElementById("taskInput").value;
+          if (!task.trim()) return alert("Task cannot be empty!");
 
-    // Edit Task
-    async function editTask(id, oldTask) {
-      const newTask = prompt("Edit your task:", oldTask);
-      if (newTask && newTask.trim()) {
-        await fetch(`/update-todo/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ task: newTask }),
+          await fetch("/add-todo", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ task }),
+          });
+
+          document.getElementById("taskInput").value = "";
+          fetchTodos();
+        });
+
+      // Delete Todo
+      async function deleteTodo(id) {
+        await fetch(`/delete-todo/${id}`, {
+          method: "DELETE",
         });
         fetchTodos();
       }
-    }
 
-    // Load todos initially
-    fetchTodos();
-  </script>
-</body>
+      // Toggle Done (via checkbox)
+      async function toggleDone(id, newStatus) {
+        await fetch(`/update-todo/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isDone: newStatus }),
+        });
+        fetchTodos();
+      }
+
+      // Edit Task
+      async function editTask(id, oldTask) {
+        const newTask = prompt("Edit your task:", oldTask);
+        if (newTask && newTask.trim()) {
+          try {
+            const response = await fetch(`/update-todo/${id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ task: newTask.trim() }),
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              alert("Error: " + error.message);
+              return;
+            }
+
+            fetchTodos();
+          } catch (err) {
+            console.error("Error updating task:", err);
+            alert("Something went wrong while updating the task!");
+          }
+        }
+      }
+
+      // Load todos initially
+      fetchTodos();
+    </script>
+  </body>
 </html>
